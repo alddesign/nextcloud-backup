@@ -6,7 +6,7 @@ Because [How hard can it be](#how-hard-can-it-be)
 [Installation](#installation)  
 [Configuration](#configuration)  
 [Usage](#usage)  
-[Restore](#restore)
+[Restore](#restore)  
 [Notes](#notes)  
 
 ## Requirements
