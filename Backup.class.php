@@ -156,13 +156,8 @@ class Backup
 
     private function error(string $message)
     {
-        $message = sprintf('ERROR: %s', $message);
-        
-        http_response_code(500);
-        echo $message;
-        
-        $this->log($message);
-
+        RequestHandler::error($message, false);
+        $this->log(sprintf('[ERROR]: %s', $message));
         die;
     }
 
