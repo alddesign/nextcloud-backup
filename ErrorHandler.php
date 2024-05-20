@@ -1,6 +1,4 @@
 <?php
-register_shutdown_function('onShutdown');
-
 function onShutdown()
 {
     //Holds the last error (that caused the shutdown) or is NULL if there was no error
@@ -19,3 +17,4 @@ function onShutdown()
     $message = sprintf('[PHP-ERROR]: %s - %s:%s', $error['message'], $error['file'], $error['line']);
     echo $message;
 }
+register_shutdown_function('onShutdown');
