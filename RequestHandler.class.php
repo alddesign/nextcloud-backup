@@ -3,8 +3,6 @@ declare(strict_types = 1);
 
 class RequestHandler
 {
-    private static string $targetName = '';
-    private static bool $all = false;
 
     private function __construct()
     {
@@ -12,57 +10,67 @@ class RequestHandler
 
     public static function start()
     {
-        try
-        {
-            trigger_error("Nigga", E_USER_WARNING);
-            self::validateRequest();
-            self::runBackups();
-        }
-        catch(Exception $ex)
-        {
-            self::error($ex->getMessage());
-        }
+        $targets = self::validateRequest();
+        self::runBackups($targets);
     }
 
-    private static function runBackups()
+    /** @param Target[] $targets */
+    private static function runBackups(array $targets)
     {
-        $names = self::$all ? array_keys(TARGETS) : [self::$targetName];
-        $total = count($names);
+        global $currentBackup;
+
         $no = 0;
-        foreach($names as $name)
+        $total = count($targets);
+        foreach($targets as $target)
         {
             $no++;
-            $backup = new Backup(TARGETS[$name], $name, $no, $total);
+            $backup = new Backup($target, $no, $total);
+            $currentBackup = $backup;
             $backup->run();
+            $currentBackup = null;
         }
     }
 
-    /** Validate GET request and store relevant request data */
+    /** 
+     * Validate GET request and store relevant request data 
+     * @return Target[] 
+     */
     private static function validateRequest()
     {
+        //Check key
         $key = $_GET['key'] ?? false;
         if(!$key || $key !== KEY)
         {
             throw new Exception('Invalid key');
         }
 
-        self::$targetName = $_GET['target'] ?? '';
-        self::$all = isset($_GET['all']) ? $_GET['all'] === '1' : false;
-        if(!self::$all && (!self::$targetName || !isset(TARGETS[self::$targetName])))
+        //Check params
+        $targetName = $_GET['target'] ?? '';
+        $all = isset($_GET['all']) ? $_GET['all'] === '1' : false;
+        if(!$all && !$targetName)
         {
-            throw new Exception(sprintf('Invalid target "%s"', self::$targetName));
+            throw new Exception('Invalid request. Please specify either "target" or "all=1"');
         }
-    }
 
-    /** Sending error response */
-    public static function error(string $message, bool $die = true)
-    {
-        http_response_code(500);
-        echo sprintf("[ERROR]: $message");
-        
-        if($die)
+        //Build targets
+        if(empty(TARGETS) || !is_array(TARGETS))
         {
-            die;
+            throw new Exception('Invalid configuration: TARGETS');
         }
+        if(!$all && !isset(TARGETS[$targetName]))
+        {
+            throw new Exception(sprintf('Invalid target "%s"', $targetName));
+        }
+
+        /** @var Target[] */
+        $targets = [];
+        /** @var array<string,array> */
+        $targetsRaw = $all ? TARGETS : [TARGETS[$targetName]];
+        foreach($targetsRaw as $name => $targetRaw)
+        {
+            $targets[] = new Target($name, $targetRaw);
+        }
+
+        return $targets;
     }
 }

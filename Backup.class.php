@@ -3,15 +3,14 @@ declare(strict_types = 1);
 
 class Backup
 {
+    private Target $target;
+
     private float $backupTimestamp = 0;
     private string $backupTimeString = '';
-    private string $targetName = '';
-    private Target $target;
 
     private int $no = 0;
     private int $total = 0;
 
-    private string $backupDir = '';
     private string $nextCloudConfigPhpPath = '';
     private string $baseFilename = '';
     private string $logFilePath = '';
@@ -22,36 +21,27 @@ class Backup
 
     private const DATETIME_FOMRAT = 'Y-m-d_H-i-s';
 
-    public function __construct(Target $target, string $targetName, int $no, int $total)
-    {
-        $this->backupDir = self::removeTrailingSlash(BACKUP_DIR);       
+    public function __construct(Target $target, int $no, int $total)
+    {    
         $this->target = $target;
-        $this->targetName = $targetName; 
         $this->no = $no;
         $this->total = $total;
     }
 
     public function run()
     {
-        try
-        {
-            $this->init();
-            $this->deleteOldBackups();
+        $this->init();
+        $this->deleteOldBackups();
 
-            $this->maintenanceMode(true);
+        $this->maintenanceMode(true);
 
-            $this->backupDb();
-            $this->backupData();
+        $this->backupDb();
+        $this->backupData();
 
-            $this->maintenanceMode(false);
-            $this->log(sprintf('Total backup size: %s', $this->formatBytes($this->totalBackupSizeByte)));
-            $this->log(sprintf('Total backup duration: %s sec.', time() - $this->backupTimestamp));
-            $this->log('### BACKUP FINISHED ###');
-        }
-        catch(Exception $ex)
-        {
-            $this->error($ex->getMessage());
-        }
+        $this->maintenanceMode(false);
+        $this->log(sprintf('Total backup size: %s', $this->formatBytes($this->totalBackupSizeByte)));
+        $this->log(sprintf('Total backup duration: %s sec.', time() - $this->backupTimestamp));
+        $this->log('### BACKUP FINISHED ###');
     }
 
     private function init()
@@ -60,19 +50,19 @@ class Backup
         $this->backupTimestamp = $time->getTimestamp();
         $this->backupTimeString = $time->format(self::DATETIME_FOMRAT);
 
-        $this->baseFilename = sprintf('%s___%s', $this->backupTimeString, $this->targetName);
-        $this->logFilePath = sprintf('%s/%s%s', $this->backupDir, $this->baseFilename, '.log');
-        $this->sqlBackupFilePath = sprintf('%s/%s%s', $this->backupDir, $this->baseFilename, '.sql');
-        $this->dataBackupFilePath = sprintf('%s/%s%s', $this->backupDir, $this->baseFilename, '.zip');
+        $this->baseFilename = sprintf('%s___%s', $this->backupTimeString, $this->target->name);
+        $this->logFilePath = sprintf('%s/%s%s', $this->target->backupDir, $this->baseFilename, '.log');
+        $this->sqlBackupFilePath = sprintf('%s/%s%s', $this->target->backupDir, $this->baseFilename, '.sql');
+        $this->dataBackupFilePath = sprintf('%s/%s%s', $this->target->backupDir, $this->baseFilename, '.zip');
         $this->nextCloudConfigPhpPath = sprintf('%s/config/config.php', $this->target->path);
 
         $data = 
         [
             'version' => APP_VERSION,
-            'targetName' => $this->targetName,
+            'targetName' => $this->target->name,
             'nextcloudDir' => $this->target->path,
             'nextCloudConfigPhpPath' => $this->nextCloudConfigPhpPath,
-            'backupDir' => $this->backupDir,
+            'backupDir' => $this->target->backupDir,
             'baseFilename' => $this->baseFilename,
             'logFilePath' => $this->logFilePath,
             'sqlBackupFilePath' => $this->sqlBackupFilePath,
@@ -88,22 +78,22 @@ class Backup
         $this->log(sprintf('### alddesign/nextcloud-backup %s ###', APP_VERSION));
         $this->log(sprintf('### STARTING BACKUP %s of %s ###', $this->no, $this->total));
 
-        if(!file_exists($this->backupDir))
+        if(!file_exists($this->target->backupDir))
         {
-            $this->error('Backup directory not found - check path');
+            throw new Exception('Backup directory not found - check path');
         }
         if(!file_exists($this->nextCloudConfigPhpPath))
         {
-            $this->error('Nextclouds config.php not found - check path');
+            throw new Exception('Nextclouds config.php not found - check path');
         }
 
-        $this->log(sprintf('Target name: "%s"', $this->targetName));
+        $this->log(sprintf('Target name: "%s"', $this->target->name));
         $this->log(sprintf('Nextcloud version of target: %s', $this->getNexcloudVersion()));
     }
 
     private function deleteOldBackups()
     {
-        $keep = $this->target->numberOfBackupsToKeep;
+        $keep = $this->target->backupsToKeep;
         if($keep <= 0)
         {
             $this->log('No old backups to deleted. Number of backups to keep is 0 (keep all)');
@@ -113,17 +103,17 @@ class Backup
         //Find all the .log file & parase the first line line json data
         /** @var string[] */
         $backups = [];
-        $filenames = scandir($this->backupDir);
+        $filenames = scandir($this->target->backupDir);
         foreach($filenames as $name)
         {
-            if(str_ends_with($name, '.log') && str_contains($name, sprintf('___%s', $this->targetName)))
+            if(str_ends_with($name, '.log') && str_contains($name, sprintf('___%s', $this->target->name)))
             {
-                $f = fopen(sprintf('%s/%s', $this->backupDir, $name), 'r');
+                $f = fopen(sprintf('%s/%s', $this->target->backupDir, $name), 'r');
                 $line = !feof($f) ? fgets($f) : '';
                 fclose($f);
 
                 $data = json_decode($line, true);
-                if(is_array($data) && isset($data['targetName']) && $data['targetName'] === $this->targetName)
+                if(is_array($data) && isset($data['targetName']) && $data['targetName'] === $this->target->name)
                 {
                     $backups[(int)$data['backupTimestamp']] = $data;
                 }
@@ -165,19 +155,19 @@ class Backup
     {
         if(!file_exists($path))
         {
-            $this->warn(sprintf('Could not delete backup file "%s". File not found', $path));
+            $this->logWarning(sprintf('Could not delete backup file "%s". File not found', $path));
             return;
         }
 
         if(!is_writable($path))
         {
-            $this->warn(sprintf('Could not delete backup file "%s". File not writeable', $path));
+            $this->logWarning(sprintf('Could not delete backup file "%s". File not writeable', $path));
             return;
         }
 
         if(!unlink($path))
         {
-            $this->warn(sprintf('Could not delete backup file "%s".', $path));
+            $this->logWarning(sprintf('Could not delete backup file "%s".', $path));
             return;
         }
 
@@ -276,14 +266,7 @@ class Backup
         file_put_contents($this->logFilePath, $line, FILE_APPEND | LOCK_EX);
     }
 
-    private function error(string $message)
-    {
-        RequestHandler::error($message, false);
-        $this->log(sprintf('[ERROR]: %s', $message));
-        die;
-    }
-
-    private function warn(string $message)
+    private function logWarning(string $message)
     {
         $this->log(sprintf('[WARNING]: %s', $message));
     }
@@ -301,15 +284,5 @@ class Backup
        
         return round($bytes, $precision) . ' ' . $units[$pow]; 
     } 
-    
 
-    public static function removeTrailingSlash(string $val)
-    {
-        if($val && (str_ends_with($val, '/') || str_ends_with($val, '\\')))
-        {
-            return mb_substr($val, 0, mb_strlen($val) - 1);
-        }
-
-        return $val;
-    }
 }
