@@ -77,10 +77,3 @@ The nextcloud backup app: While offering good options for where and how to store
 
 To be fair, this solution has its weaknesses too. Only full backups, no built-in schedule, no encryption or upload to external locations like ftp, g-drive or whatever.  
 On the other hand: the backup method is dead-simple and reliable. It installation and configuration is done in minutes. Restore is easy and doable on any webspace. It can be configured to backup multiple nextcloud instances and also has some sort of quota management. Its independent from nextcloud: Nextcloud updates will not break this script, and this script will not break nextcloud. I think its a good solution for smaller instances and when you "just want a backup".
-
-### Changelog
-#### v1.8.0
-- Removed database credentials from `TARGETS`. The scripts loads these from nextclouds config.php now.
-- Added `deleteUpdaterDir` to `TARGETS`. If set to `true` nextclouds /data/updater-(instance-id)/ directory will be deleted before the backup. This directory contains nextclouds automatic backup when there was an update
-#### v1.6.0
-- First version publised on GitHub
