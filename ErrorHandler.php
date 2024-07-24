@@ -9,7 +9,7 @@ function onError(int $errNo, string $errMsg, string $file, int $line)
     handleError($type, $message);
 }
 
-function onException(Exception $ex)
+function onException(Throwable $ex)
 {
     $type = '[PHP-EXCEPTION]';
     $message = sprintf('%s%s%s', $ex->getMessage(), "\n", $ex->getTraceAsString());

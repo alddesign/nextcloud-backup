@@ -64,11 +64,12 @@ class RequestHandler
 
         /** @var Target[] */
         $targets = [];
-        /** @var array<string,array> */
-        $targetsRaw = $all ? TARGETS : [TARGETS[$targetName]];
-        foreach($targetsRaw as $name => $targetRaw)
+        foreach(TARGETS as $name => $targetData)
         {
-            $targets[] = new Target($name, $targetRaw);
+            if($all || $name === $targetName)
+            {
+                $targets[] = new Target($name, $targetData);
+            }
         }
 
         return $targets;

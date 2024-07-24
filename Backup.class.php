@@ -11,6 +11,7 @@ class Backup
     private int $no = 0;
     private int $total = 0;
 
+    private array $nextCloudConfig = [];
     private string $nextCloudConfigPhpPath = '';
     private string $baseFilename = '';
     private string $logFilePath = '';
@@ -32,6 +33,7 @@ class Backup
     {
         $this->init();
         $this->deleteOldBackups();
+        $this->deleteUpdaterDir();
 
         $this->maintenanceMode(true);
 
@@ -87,8 +89,25 @@ class Backup
             throw new Exception('Nextclouds config.php not found - check path');
         }
 
+        $this->nextCloudConfig = $this->loadNextCloudConfig();
+
         $this->log(sprintf('Target name: "%s"', $this->target->name));
-        $this->log(sprintf('Nextcloud version of target: %s', $this->getNexcloudVersion()));
+        $this->log(sprintf('Nextcloud version of target: %s', $this->cGet('version', 'unknown')));
+    }
+
+    /** 
+     * Lets do this in a separate method
+     * @return array The $CONFIG array from nextcloud
+     */
+    private function loadNextCloudConfig()
+    {
+        require $this->nextCloudConfigPhpPath; //Now we should have as $CONFIG
+        if(!isset($CONFIG) || !is_array($CONFIG))
+        {
+            throw new Exception('Invalid nextcloud config.php. $CONFIG is missing or invalid.');
+        }
+
+        return $CONFIG;
     }
 
     private function deleteOldBackups()
@@ -174,19 +193,48 @@ class Backup
         $this->log(sprintf('Deleted backup file "%s"', $path));
     }
 
+    private function deleteUpdaterDir()
+    {
+        if(!$this->target->deleteUpdaterDir)
+        {
+            return;
+        }
+
+        $instanceId = $this->cNeed('instanceid');
+        $path = sprintf('%s/data/updater-%s/', $this->target->path, $instanceId);
+
+        if(!file_exists($path))
+        {
+            $this->log(sprintf('No updater directory "%s" found - nothing to delete', $path));
+            return;
+        }
+
+        $command = sprintf('rm -R %s', escapeshellarg($path));
+        exec($command, $output, $result);
+
+        if($result !== 0)
+        {
+            $output = implode(";\n", $output);
+            throw new Exception(sprintf('Error deleting updater directory. Result code: %s. Output %s', $result, $output));
+        }
+
+
+        $this->log(sprintf('Deleted updater directory "%s"', $path));
+    }
+
     private function backupData()
     {
         $this->log(sprintf('Starting data backup to: %s', $this->dataBackupFilePath));
         $this->log(sprintf('Backing up nextclound directory: %s', $this->target->path));
 
         // Execute the shell command
-        $command = sprintf('cd %s && zip -r %s ./', $this->target->path, $this->dataBackupFilePath);
+        $command = sprintf('cd %s && zip -r %s ./', escapeshellarg($this->target->path), escapeshellarg($this->dataBackupFilePath));
         exec($command, $output, $result);
         
         if($result !== 0)
         {
-            $output = implode(";\n", $output);
-            throw new Exception(sprintf('zip result code: %s, %s', $result, $output));
+            $output = implode("\n", $output);
+            throw new Exception(sprintf('Error running "zip". Result code: %s. Output %s', $result, $output));
         }
 
         $size = filesize($this->dataBackupFilePath);
@@ -197,13 +245,16 @@ class Backup
 
     private function backupDb()
     {
-        $t = $this->target;
+        $dbHost = $this->cNeed('dbhost');
+        $dbName = $this->cNeed('dbname');
+        $dbUser = $this->cNeed('dbuser');
+        $dbPassword = $this->cNeed('dbpassword');
 
         $this->log(sprintf('Starting DB backup to: %s', $this->sqlBackupFilePath));
-        $this->log(sprintf('Backing up nextcloud DB: Host: "%s", Name: "%s", User: "%s"', $t->dbHost, $t->dbName, $t->dbUser));
+        $this->log(sprintf('Backing up nextcloud DB: Host: "%s", Name: "%s", User: "%s"', $dbHost, $dbName, $dbUser));
 
         //Executing shell command
-        $command = sprintf('mysqldump --single-transaction -h %s -u %s -p%s %s > %s', $t->dbHost, $t->dbUser, $t->dbPassword, $t->dbName, $this->sqlBackupFilePath);
+        $command = sprintf('mysqldump --single-transaction -h %s -u %s -p%s %s > %s', $dbHost, $dbUser, $dbPassword, $dbName, $this->sqlBackupFilePath);
         exec($command, $output, $result);
         
         if($result !== 0)
@@ -216,16 +267,6 @@ class Backup
         $this->totalBackupSizeByte += $size;
 
         $this->log(sprintf('DB backup (%s) finished: %s', $this->formatBytes($size), $this->sqlBackupFilePath));
-    }
-
-    private function getNexcloudVersion()
-    {
-        require $this->nextCloudConfigPhpPath; //Now we should have as $CONFIG
-        
-        $version = $CONFIG['version'] ?? 'unknown';
-        unset($CONFIG);
-        
-        return $version;
     }
 
     private function maintenanceMode(bool $on)
@@ -269,6 +310,28 @@ class Backup
     private function logWarning(string $message)
     {
         $this->log(sprintf('[WARNING]: %s', $message));
+    }
+
+    /** Loads a value from the nextcloud config array. Throws error if it not exists. */
+    private function cNeed(string $key, bool $errorIfEmpty = true)
+    {
+        if(!isset($this->nextCloudConfig[$key]))
+        {
+            throw new Exception(sprintf('Faild to load "%s" from nextclouds config.php.', $key));
+        }
+
+        if($errorIfEmpty && empty($this->nextCloudConfig[$key]))
+        {
+            throw new Exception(sprintf('"%s" must not be empty in nextclouds config.php.', $key));
+        }
+
+        return $this->nextCloudConfig[$key];
+    }
+
+    /** Loads a value from the nextcloud config array. */
+    private function cGet(string $key, $default = '')
+    {
+        return $this->nextCloudConfig[$key] ?? $default;
     }
 
     //Format by
