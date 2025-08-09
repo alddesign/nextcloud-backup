@@ -16,15 +16,10 @@ Because [How hard can it be](#how-hard-can-it-be)
 - Nextclound hub running on a *mysql* database
 
 ## Installation
-Upload this repository to a place on you webspace which is accessible over the internet. If possible: not into your nextcloud directory. 
+Upload this repository to a place on your webspace which is accessible over the internet. If possible: not into your nextcloud directory. 
 
 ## Configuration
-See **config.php**
-- `KEY` Set this to a random string (url safe)
-- `BACKUP_DIR` Absolute path to the directory where the backups shall be stored
-- `MAINTAIN_WAIT` Number of seconds to wait after the maintenance mode was activated. See [MAINTAIN_WAIT](#maintain_wait) for more information about that value.
-- `TARGETS` Array of nextcloud instances to backup. There is an example in `config.php`.
-
+The file `config.php` is used for configuration. Everything you need is documented in this file. *You have to modify this file.*
 
 ## Run Backups
 To run a backup, make a HTTP GET request to the `index.php`. You can do this manually or via WebCRON (which most hosting providers offer). Supply the following parameters:
@@ -41,25 +36,27 @@ Very straight forward - for more infos see [Backup files](#backup-files)
 - Restore the *Nextcloud Database* using the `.sql` file.  
 You can import it using [phpMyAdmin](https://www.phpmyadmin.net/) which most hosting providers offer out of the box.
 - Restore the *Nextcloud Directory* by extracting the `.zip` file.  
-There are plenty of ways to do this: use the file management tool your hosting provider provides, use [Tiny File Manager](https://tinyfilemanager.github.io/),...
-- Disable maintenance mode by removing the line that was added by the backup script:
-```php
-$CONFIG["maintenance"] = true; /*added by nextcloud-backup*/
-``` 
+There are plenty of ways to do this: use the file management tool your hosting provider provides, use [Tiny File Manager](https://tinyfilemanager.github.io/), etc. 
+- The same goes for the `.data.zip` (optionally, only if you specified a separate nextcloud data directory)
+- Disable maintenance mode by removing this line from nextclouds `config/config.php`:
+  ```php 
+  $CONFIG["maintenance"] = true; /*added by nextcloud-backup*/
+  ``` 
 
 ## Notes
 ### Attention
 This script is tested only briefly on two nextcloud instance. Use at your own risk. I am not responsible for any data loss or corruption.
 
-### Script Responses
-- If everything worked correctly, the response text is **"nextcloud-backup-successful" (HTTP 200)**.
-- When there is an error, the response text contains the **error message (HTTP 500)** if possible.
-Addidtional infos can be found in the `.log` file in the backup directory (if the error was not fatal).
+### Responses
+- If everything worked correctly, the response text is `nextcloud-backup-successful` alongside with a `HTTP 200` response code.
+- When there is an error, the response text contains the **error message** alongside with a `HTTP 500` response code.
+Addidtional infos can be found in the `.log` file.
 
 ### Backup files
 A backup consists of these files:
   - `.sql` the nextcloud database as a full dump.
   - `.zip` the entire nextcloud directory.
+  - `.data.zip` *(optional)* the nextcloud data directory (only if `dataDir` is specified in target)
   - `.log` contains infos about the backup process, PHP and nextcloud. Do not delete or modify this file. Nextcloud-backup needs data stored in this file to handle automatic deletion of old backups.
 
 ### MAINTAIN_WAIT
@@ -76,4 +73,4 @@ For more information: https://docs.nextcloud.com/server/28/admin_manual/installa
 The nextcloud backup app: While offering good options for where and how to store backups, simply does not work that well (not at all on most shared web spaces). Restore, while flexible, is complicated and requires *ooc*, direct shell access and exporting a key (good luck if you forgot about that and your nextcloud is dead). The whole thing is far from intuitive, and when you want to backup NOW - good luck, maybe in a few hours or so. Oh and the documentation is always "still in writing".
 
 To be fair, this solution has its weaknesses too. Only full backups, no built-in schedule, no encryption or upload to external locations like ftp, g-drive or whatever.  
-On the other hand: the backup method is dead-simple and reliable. It installation and configuration is done in minutes. Restore is easy and doable on any webspace. It can be configured to backup multiple nextcloud instances and also has some sort of quota management. Its independent from nextcloud: Nextcloud updates will not break this script, and this script will not break nextcloud. I think its a good solution for smaller instances and when you "just want a backup".
+On the other hand: the backup method is dead-simple and reliable. Its installation and configuration is done in minutes. Restore is easy and doable on any webspace. It can be configured to backup multiple nextcloud instances and also has some sort of quota management. Its independent from nextcloud: Nextcloud updates will not break this script, and this script will not break nextcloud. I think its a good solution for smaller instances and when you "just want a backup".

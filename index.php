@@ -9,14 +9,14 @@ error_reporting(E_ERROR);
 $currentBackup = null;
 
 //Register error handling as soon as possible
-require_once(__DIR__ . '/ErrorHandler.php');
+require_once(__DIR__ . '/inc/ErrorHandler.php');
 register_shutdown_function('onShutdown');
 set_error_handler('onError', E_ERROR);
 set_exception_handler('onException');
 
-require_once(__DIR__ . '/Target.class.php');
-require_once(__DIR__ . '/Backup.class.php');
-require_once(__DIR__ . '/RequestHandler.class.php');
+require_once(__DIR__ . '/inc/Target.class.php');
+require_once(__DIR__ . '/inc/Backup.class.php');
+require_once(__DIR__ . '/inc/RequestHandler.class.php');
 require_once(__DIR__ . '/config.php');
 
 //Start the real work
