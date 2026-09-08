@@ -36,13 +36,14 @@ function onShutdown()
 function handleError(string $type, string $message)
 {
     global $currentBackup;
+    $now = (new \DateTime('now', LOG_TIMEZONE))->format('Y-m-d H:i:s.f');
 
     if(!headers_sent())
     {
         http_response_code(500);
     }
 
-    $errorMsg = sprintf('[%s]: %s', $type, $message);
+    $errorMsg = sprintf('[%s][%s]: %s', $now, $type, $message);
     
     //Try to write to the backup log file
     $written = false;

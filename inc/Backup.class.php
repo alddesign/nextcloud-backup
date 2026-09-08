@@ -36,15 +36,17 @@ class Backup
     {
         $this->init();
         $this->deleteOldBackups();
-        $this->deleteUpdaterDir();
-
+        
         $this->maintenanceMode(true);
 
+        $this->deleteUpdaterDir();
+        $this->deleteLogs();
         $this->backupDb();
         $this->backupNextCloudDir();
         $this->backupDataDir();
 
         $this->maintenanceMode(false);
+        
         $this->log(sprintf('Total backup size: %s', $this->formatBytes($this->totalBackupSizeByte)));
         $this->log(sprintf('Total backup duration: %s sec.', time() - $this->backupStartTimestamp));
         $this->log('### BACKUP FINISHED ###');
@@ -236,6 +238,31 @@ class Backup
 
 
         $this->log(sprintf('Deleted nextcloud-updater-backup directory "%s"', $path));
+    }
+
+    private function deleteLogs()
+    {
+        if(!$this->target->deleteLogs)
+        {
+            return;
+        }
+
+        $this->log('# Starting: deleting nextcloud logs');
+
+        $dir = $this->target->dataDir ? $this->target->dataDir : $this->target->path . '/data';
+        $files = scandir($dir);
+        if($files)
+        {
+            foreach($files as $file)
+            {
+                $path = sprintf('%s/%s', $dir, $file);
+                if(str_ends_with($file, '.log') && is_file($path))
+                {
+                    unlink($path);
+                    $this->log(sprintf('Deleted "%s"', $path));
+                }
+            }
+        }
     }
 
     private function backupNextCloudDir()

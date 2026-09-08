@@ -13,6 +13,9 @@ define('BACKUP_DIR', '/var/www/backups/');
 /** Wait timeout, see section MAINTAIN_WAIT in README.md for details */
 define('MAINTAIN_WAIT', 90);
 
+/** Timezone log entires */
+define('LOG_TIMEZONE', new \DateTimeZone('Europe/Vienna'));
+
 /** List all the nextcloud instances you want to backup in this array: */
 define('TARGETS', 
 [
@@ -41,11 +44,19 @@ define('TARGETS',
         'backupDir' => '/var/www/my_backups/',
         
         /**
-         * OPTIONAL: Delete the data/updater-<instance-id>/ before backing up. 
-         * On every backup, nextcloud itself creates a backup in this directory.
-         * This can fill up your disk space very quickly, so it is recommended to set this option to true.
+         * OPTIONAL, Default = true. 
+         * Delete the data/updater-<instance-id>/ direcory before running the backup. 
+         * On every backup, nextcloud itself creates a more or less useless backup in this directory.
+         * Recommended, because this takes up a lot of space.
          */
         'deleteUpdaterDir' => true,
+
+        /** 
+         * OPTIONAL, Default = false. 
+         * Delete the nextcloud .log files in the data directory before running the backup.
+         * Recommended, because this log files can take up quite some space. 
+         */
+        'deleteLogs' => false,
         
         /**
          * OPTIONAL: If your nextcloud data directory is not located inside the nextcloud directory (which is the default location). 
@@ -56,6 +67,3 @@ define('TARGETS',
     //'my-second-nextcloud' => [...],
     //'my-third-nextcloud' => [...],
 ]);
-
-/** Ignore */
-define('APP_VERSION', '1.9.0');

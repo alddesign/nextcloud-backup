@@ -1,9 +1,14 @@
 <?php
 declare(strict_types = 1);
+
+//Set error reporting as soon as possible
 error_reporting(E_ERROR);
 @ini_set('display_errors', 'off');
 @ini_set('max_execution_time', 3600); //You might want to adjust this to max. value allowd by your hosting provider
-@ini_set('memory_limit', '64M'); //The script doesnt need that much
+@ini_set('memory_limit', '32M'); //The script doesnt need that much
+
+/** Version of nextcloud-backup */
+define('APP_VERSION', '1.9.2');
 
 /** @var Backup  */
 $currentBackup = null;
@@ -14,6 +19,7 @@ register_shutdown_function('onShutdown');
 set_error_handler('onError', E_ERROR);
 set_exception_handler('onException');
 
+//Include required PHP
 require_once(__DIR__ . '/inc/Target.class.php');
 require_once(__DIR__ . '/inc/Backup.class.php');
 require_once(__DIR__ . '/inc/RequestHandler.class.php');

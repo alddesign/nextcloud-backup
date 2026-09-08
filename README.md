@@ -28,7 +28,7 @@ To run a backup, make a HTTP GET request to the `index.php`. You can do this man
 - `all=1` Backup all targets defined in `config.php`
 
 Examples:  
-`https://myhost.com/nextcloud-backup/index.php?key=123456&target=my-nextcloud`
+`https://myhost.com/nextcloud-backup/index.php?key=123456&target=my-nextcloud`  
 `https://myhost.com/nextcloud-backup/index.php?key=123456&all=1`  
 
 ## Perform Restore

@@ -15,8 +15,10 @@ class Target
     public string $backupDir = '';
     /** @var string Custom nextcloud data directory (if its not in the nextcloud dir) */
     public string $dataDir = '';
-    /** @var bool Delete the /data/updater-(instance-id)/ directory */
+    /** @var bool Delete the nextcloud /data/updater-(instance-id)/ directory before backup*/
     public bool $deleteUpdaterDir = false;
+        /** @var bool Delete the nextcloud /data/updater-(instance-id)/ directory before backup*/
+    public bool $deleteLogs = false;
 
     /**
      * @param string $name Unique identifier of the nextcloud target
@@ -40,7 +42,9 @@ class Target
         $this->dataDir = strval($data['dataDir'] ?? '');
         $this->dataDir = self::rts($this->dataDir);
 
-        $this->deleteUpdaterDir = ($data['deleteUpdaterDir'] ?? false) === true;
+        $this->deleteUpdaterDir = boolval($data['deleteUpdaterDir'] ?? $this->deleteUpdaterDir);
+        
+        $this->deleteLogs = boolval($data['deleteLogs'] ?? $this->deleteLogs);
     }
 
     /** Remove trailing slash */
